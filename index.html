@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Procedural Maze Solver Game</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Tab Navigation -->
+  <div class="tab-bar">
+    <button class="tab-button active" data-game="maze">Maze</button>
+    <button class="tab-button" data-game="cardmatching">CardMatching</button>
+  </div>
+
+  <div class="controls maze-only">
+    <div class="content-wrap">
+      <button id="closeControls" class="close-btn" aria-label="Close settings">✕</button>
+      <h2>Maze Controls</h2>
+      <div class="controls-row">
+        <label>Size: <input id="size" type="number" value="12" min="5" max="40"></label>
+      </div>
+      <label class="controls-row">Min path fraction (to avoid too-easy):
+        <input id="minFraction" type="number" value="0.12" step="0.01" min="0" max="1">
+      </label>
+  <label class="controls-row"><input id="fogToggle" type="checkbox" checked> Enable fog-of-war (visibility radius)</label>
+      <label class="controls-row">Visibility radius: <input id="visRadius" type="number" value="3" min="1" max="10"></label>
+      <div class="controls-row">
+        <button id="regen">Regenerate Maze</button>
+        <button id="reset" class="secondary" style="display:none">New Start/Exit</button>
+      </div>
+      <div class="status" id="status">Use arrow keys to move. Player starts at a random cell; exit is another random cell.</div>
+      <hr>
+      <div class="notes">Notes: Maze is generated with a depth-first recursive backtracker (perfect maze) and validated with BFS. If it is too short the generator automatically retries. Ready for additional features (enemies, collectibles, fog, etc.).</div>
+    </div>
+  </div>
+
+  <div id="main-content">
+    <!-- Maze Game -->
+    <div id="maze-game" class="game-container active">
+      <div class="game">
+        <div id="grid" class="grid" tabindex="0" aria-label="Maze grid"></div>
+      </div>
+    </div>
+
+    <!-- CardMatching Game -->
+    <div id="cardmatching-game" class="game-container">
+      <div class="card-game-header">
+        <h2>Card Matching Game</h2>
+        <div class="tries-counter">Tries: <span id="tries-count">0</span></div>
+      </div>
+      <div class="difficulty-selector">
+        <label>Difficulty:</label>
+        <button class="difficulty-btn active" data-difficulty="easy">Easy</button>
+        <button class="difficulty-btn" data-difficulty="normal">Normal</button>
+      </div>
+      <div class="game">
+        <div id="card-grid" class="card-grid"></div>
+      </div>
+      <!-- Completion Screen -->
+      <div id="completion-screen" class="completion-screen">
+        <div class="completion-content">
+          <h2 class="completion-title">🎉 Great Job! 🎉</h2>
+          <p class="completion-message">You completed the game in</p>
+          <p class="completion-tries"><span id="final-tries">0</span> tries</p>
+          <button id="play-again-btn" class="play-again-btn">Play Again</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Topbar / Main menu for mobile: contains a visible Regenerate button moved here for quick access -->
+  <div id="topbar" class="maze-only" style="position:fixed;left:12px;top:12px;right:12px;display:none;justify-content:space-between;align-items:center;gap:8px;z-index:60">
+    <div style="background:rgba(255,255,255,0.9);padding:6px 10px;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,0.06)">
+      <button id="regenTop" style="padding:6px 10px;border-radius:8px;border:0;background:#111;color:#fff;">Regenerate Maze</button>
+    </div>
+  </div>
+
+  <!-- Mobile joystick area: will be laid out differently for portrait/landscape/desktop -->
+  <div id="mobileControls" class="maze-only" style="z-index:70;display:none;align-items:center;justify-content:center;pointer-events:auto">
+    <div id="mobileInner" style="width:100%;max-width:1100px;display:flex;align-items:center;justify-content:center;padding:14px;box-sizing:border-box;position:relative;">
+      <!-- left: empty (for now) -->
+      <div id="mobileLeft" style="position:absolute;left:14px;"></div>
+      <!-- center: joystick area -->
+      <div id="mobileCenter" style="display:flex;align-items:center;justify-content:center;">
+        <div id="joystick" style="width:140px;height:140px;border-radius:12px;background:rgba(255,255,255,0.92);box-shadow:0 8px 22px rgba(0,0,0,0.08);display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:8px;padding:12px;">
+      <!-- grid positions: use data-dir on central buttons -->
+      <div></div>
+      <button class="joy-btn" data-dir="up" style="border-radius:8px;border:0;">▲</button>
+      <div></div>
+      <button class="joy-btn" data-dir="left" style="border-radius:8px;border:0;">◀</button>
+      <div style="background:transparent"></div>
+      <button class="joy-btn" data-dir="right" style="border-radius:8px;border:0;">▶</button>
+      <div></div>
+      <button class="joy-btn" data-dir="down" style="border-radius:8px;border:0;">▼</button>
+      <div></div>
+    </div>
+      </div>
+      <!-- right: vertical stack of action buttons -->
+      <div id="mobileRight" style="position:absolute;right:14px;display:flex;flex-direction:column;align-items:flex-end;justify-content:flex-end;gap:10px;">
+        <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+          <button id="regenMobile" style="padding:10px 12px;border-radius:10px;border:0;background:#111;color:#fff;box-shadow:0 6px 18px rgba(0,0,0,0.06)">Regenerate</button>
+          <button id="solveMobile" style="padding:10px 12px;border-radius:10px;border:0;background:#fff;box-shadow:0 6px 18px rgba(0,0,0,0.06)">Show Solution</button>
+          <button id="fogMobile" style="padding:10px 12px;border-radius:10px;border:0;background:#fff;box-shadow:0 6px 18px rgba(0,0,0,0.06)">Fog: On</button>
+          <button id="settingsToggle" style="padding:10px 12px;border-radius:10px;border:0;background:#fff;box-shadow:0 6px 18px rgba(0,0,0,0.06)">Settings</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="script.js"></script>
+  <script src="cardMatching.js"></script>
+  <script src="matchIcons.js"></script>
+</body>
+</html>
